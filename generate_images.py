@@ -1,4 +1,5 @@
 import argparse
+import json
 import numpy as np
 
 from PIL import Image
@@ -25,23 +26,41 @@ def parse_args():
     return parser.parse_args()
 
 
-def save_image(image, name, directory='./'):
-    directory = Path(directory)
-    directory.mkdir(parents=True, exist_ok=True)
+def to_path(filename, directory='./'):
+    dir_ = Path(directory).resolve()
+    dir_.mkdir(parents=True, exist_ok=True)
 
-    image.save(directory / name)
+    return str(dir_ / filename)
 
 
 def main(args):
     np.random.seed(args.seed)
 
+    height = args.height
+    width = args.width
+
+    metadata = {'images': []}
     for i in range(args.num_images):
-        img_arr = np.random.rand(args.height, args.width, 3) * 255
+        print('Generating image {}...'.format(i))
+
+        img_arr = np.random.rand(height, width, 3) * 255
         img = Image.fromarray(img_arr.astype('uint8')).convert('RGB')
 
-        if not args.dry_run:
-            save_image(img, 'image_{}.jpg'.format(i),
-                       directory=args.output_dir)
+        if args.dry_run:
+            continue
+
+        img_filepath = to_path('image_{}.jpg'.format(i),
+                               directory=args.output_dir)
+        img.save(img_filepath)
+
+        metadata['images'].append(
+            {'file_name': img_filepath, 'height': height, 'width': width, 'image_id': i})
+
+    if args.dry_run:
+        return
+
+    with open(to_path('metadata.json', directory=args.output_dir), 'w') as metadata_file:
+        json.dump(metadata, metadata_file, indent=4)
 
 
 if __name__ == '__main__':
